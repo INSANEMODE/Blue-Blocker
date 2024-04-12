@@ -7,11 +7,22 @@ import { BlockBlueVerified } from '../shared';
 
 // when parsing a timeline response body, these are the paths to navigate in the json to retrieve the "instructions" object
 // the key to this object is the capture group from the request regex in inject.js
+const UserTimelineInstructionPath = [
+	"data",
+	"user",
+	"result",
+	"timeline",
+	"timeline",
+	"instructions",
+];
 const InstructionsPaths: { [key: string]: string[] } = {
 	HomeLatestTimeline: ['data', 'home', 'home_timeline_urt', 'instructions'],
 	HomeTimeline: ['data', 'home', 'home_timeline_urt', 'instructions'],
 	SearchTimeline: ['data', 'search_by_raw_query', 'search_timeline', 'timeline', 'instructions'],
 	UserTweets: ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions'],
+	Followers: UserTimelineInstructionPath,
+	Following: UserTimelineInstructionPath,
+	UserCreatorSubscriptions: UserTimelineInstructionPath,
 	TweetDetail: ['data', 'threaded_conversation_with_injections_v2', 'instructions'],
 	'search/adaptive.json': ['timeline', 'instructions'],
 };
@@ -94,6 +105,25 @@ export function ParseTimelineTweet(tweet: any, config: Config) {
 	}
 }
 
+function handleUserObject(userOuterObj: any , config: Config) {
+	let userObj = userOuterObj.user_results.result;
+
+	if (userObj.__typename === "UserUnavailable") {
+		console.log(logstr, "user is unavailable", userObj);
+		return;
+	}
+
+	if (userObj.__typename !== "User") {
+		console.error(logstr, "could not parse user object", userObj);
+		return;
+	}
+	BlockBlueVerified(userOuterObj.user_results.result, config);
+}
+
+export function ParseTimelineUser(userOuterObj: any, config: Config) {
+	handleUserObject(userOuterObj, config);
+}
+
 export function HandleInstructionsResponse(
 	e: CustomEvent<BlueBlockerEvent>,
 	body: Body,
@@ -155,6 +185,9 @@ export function HandleInstructionsResponse(
 			case 'TimelineTimelineItem':
 				if (tweet.content.itemContent?.itemType == 'TimelineTweet') {
 					ParseTimelineTweet(tweet.content, config);
+				}
+				else if (tweet.content.itemContent?.itemType == "TimelineUser") {
+					ParseTimelineUser(tweet.content.itemContent, config);
 				}
 				break;
 
