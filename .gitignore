@@ -21,3 +21,5 @@ vite.config.ts.*
 
 # secrets
 secrets.*.js
+
+/.vs
